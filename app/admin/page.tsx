@@ -1,7 +1,7 @@
 import { requireSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InactivityCountdown } from "@/app/components/inactivity-countdown";
 
-import { InactivityCountdown } from "./inactivity-countdown";
 import { LeagueManager } from "./league-manager";
 import { SignOutButton } from "../dashboard/sign-out-button";
 

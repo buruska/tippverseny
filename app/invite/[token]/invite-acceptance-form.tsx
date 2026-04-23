@@ -333,7 +333,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
               maxLength={6}
               onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
               pattern="\d{6}"
-              placeholder="000000"
+              placeholder="------"
               required
               type="text"
               value={code}

@@ -128,8 +128,8 @@ async function addUserToLeague(userId: string, leagueId: string) {
   });
 }
 
-function getLeagueUrl(slug: string) {
-  return `/leagues/${slug}`;
+function getSuccessfulInviteRedirectUrl() {
+  return "/";
 }
 
 export async function checkInviteEmailAction(token: string, emailValue: string) {
@@ -259,7 +259,7 @@ export async function acceptExistingInviteAction(
   return {
     ok: true,
     error: null,
-    redirectUrl: getLeagueUrl(invitation.league.slug),
+    redirectUrl: getSuccessfulInviteRedirectUrl(),
   };
 }
 
@@ -539,6 +539,6 @@ export async function verifyInviteCodeAction(
   return {
     ok: true,
     error: null,
-    redirectUrl: getLeagueUrl(invitation.league.slug),
+    redirectUrl: getSuccessfulInviteRedirectUrl(),
   };
 }
