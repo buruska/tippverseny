@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  SUPERADMIN
+}
+
+enum LeagueRole {
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum MatchStage {
+  GROUP
+  ROUND_OF_32
+  ROUND_OF_16
+  QUARTER_FINAL
+  SEMI_FINAL
+  THIRD_PLACE
+  FINAL
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LOCKED
+  LIVE
+  FINISHED
+  CANCELLED
+}
+
+enum ScoreReason {
+  EXACT_SCORE
+  GOAL_DIFFERENCE
+  DRAW_NOT_EXACT
+  OUTCOME_ONLY
+  NO_POINTS
+}
+
+model User {
+  id                  String             @id @default(cuid())
+  email               String             @unique
+  name                String?
+  image               String?
+  passwordHash        String?
+  role                UserRole           @default(USER)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  memberships         LeagueMembership[]
+  leaguesCreated      League[]           @relation("LeagueCreator")
+  invitationsSent     Invitation[]       @relation("InvitationInviter")
+  invitationsAccepted Invitation[]       @relation("InvitationAcceptedBy")
+  predictions         Prediction[]
+  scoreEntries        ScoreEntry[]
+
+  @@index([role])
+}
+
+model League {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  description String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   User?              @relation("LeagueCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships LeagueMembership[]
+  invitations Invitation[]
+  predictions Prediction[]
+  scoreEntries ScoreEntry[]
+
+  @@index([createdById])
+}
+
+model LeagueMembership {
+  id        String     @id @default(cuid())
+  userId    String
+  leagueId  String
+  role      LeagueRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league    League     @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId])
+  @@index([leagueId, role])
+}
+
+model Invitation {
+  id           String           @id @default(cuid())
+  leagueId     String
+  email        String?
+  token        String           @unique
+  status       InvitationStatus @default(PENDING)
+  invitedById  String?
+  acceptedById String?
+  expiresAt    DateTime?
+  acceptedAt   DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  league       League           @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  invitedBy    User?            @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedBy   User?            @relation("InvitationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@unique([leagueId, email])
+  @@index([email])
+  @@index([status])
+}
+
+model Team {
+  id            String   @id @default(cuid())
+  externalId    String?  @unique
+  name          String
+  shortName     String?
+  countryCode   String?
+  flagUrl       String?
+  groupName     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  homeMatches   Match[]  @relation("MatchHomeTeam")
+  awayMatches   Match[]  @relation("MatchAwayTeam")
+
+  @@index([name])
+  @@index([groupName])
+}
+
+model Match {
+  id                String        @id @default(cuid())
+  externalId        String?       @unique
+  stage             MatchStage
+  status            MatchStatus   @default(SCHEDULED)
+  groupName         String?
+  homeTeamId        String?
+  awayTeamId        String?
+  kickoffAt         DateTime
+  lockAt            DateTime
+  homeScore         Int?
+  awayScore         Int?
+  finalHomeScore    Int?
+  finalAwayScore    Int?
+  wentToExtraTime   Boolean       @default(false)
+  wentToPenalties   Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  homeTeam          Team?         @relation("MatchHomeTeam", fields: [homeTeamId], references: [id], onDelete: SetNull)
+  awayTeam          Team?         @relation("MatchAwayTeam", fields: [awayTeamId], references: [id], onDelete: SetNull)
+  predictions       Prediction[]
+  scoreEntries      ScoreEntry[]
+
+  @@index([kickoffAt])
+  @@index([lockAt])
+  @@index([stage])
+  @@index([status])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model Prediction {
+  id                     String       @id @default(cuid())
+  userId                 String
+  leagueId               String
+  matchId                String
+  homeScore              Int
+  awayScore              Int
+  isOverride             Boolean      @default(false)
+  copiedFromPredictionId String?
+  submittedAt            DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  user                   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league                 League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match                  Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  copiedFromPrediction   Prediction?  @relation("PredictionCopies", fields: [copiedFromPredictionId], references: [id], onDelete: SetNull)
+  copiedPredictions      Prediction[] @relation("PredictionCopies")
+  scoreEntry             ScoreEntry?
+
+  @@unique([userId, leagueId, matchId])
+  @@index([leagueId, matchId])
+  @@index([matchId])
+  @@index([copiedFromPredictionId])
+}
+
+model ScoreEntry {
+  id           String      @id @default(cuid())
+  userId       String
+  leagueId     String
+  matchId      String
+  predictionId String      @unique
+  points       Int
+  reason       ScoreReason
+  calculatedAt DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league       League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match        Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  prediction   Prediction  @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId, matchId])
+  @@index([leagueId, points])
+  @@index([matchId])
+}

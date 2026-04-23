@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: appName,
     template: `%s | ${appName}`,
   },
-  description: "Barati koros focivb tippjatek Next.js alapon.",
+  description: "Baráti körös focivb tippjáték Next.js alapon.",
 };
 
 export default function RootLayout({
