@@ -47,6 +47,8 @@ Az induló projekt a következő változókat készíti elő:
 - `NEXTAUTH_URL`
 - `DATABASE_URL`
 - `AUTH_SECRET`
+- `EMAIL_FROM`
+- `RESEND_API_KEY`
 
 ## Adatbázis és Prisma
 
@@ -72,6 +74,12 @@ npm run db:create-superadmin
 ```
 
 A jelszó soha nem kerülhet commitba. A script csak hash-elt jelszót ment az adatbázisba.
+
+## Meghívó és regisztráció
+
+A liga meghívólinkje email címet kér. Meglévő ligatag esetén jelszavas belépéssel lehet csatlakozni, új felhasználónál erős jelszó és 6 számjegyű email-kód szükséges. A kód 1 percig érvényes, és a felületen újraküldhető.
+
+Valódi emailküldéshez állítsd be a `RESEND_API_KEY` és `EMAIL_FROM` változókat. Ha nincs `RESEND_API_KEY`, fejlesztés közben a szerver logba kerül a kód.
 
 ## Autentikáció
 

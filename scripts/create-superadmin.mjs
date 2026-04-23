@@ -37,11 +37,13 @@ const user = await prisma.user.upsert({
     email,
     name,
     passwordHash,
+    emailVerifiedAt: new Date(),
     role: UserRole.SUPERADMIN,
   },
   update: {
     name,
     passwordHash,
+    emailVerifiedAt: new Date(),
     role: UserRole.SUPERADMIN,
   },
   select: {

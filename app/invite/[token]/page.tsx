@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+
+import { InviteAcceptanceForm } from "./invite-acceptance-form";
 
 export default async function InvitePage({
   params,
@@ -33,16 +34,7 @@ export default async function InvitePage({
         <h1 className="mt-4 text-3xl font-bold text-[color:var(--navy)]">
           {invitation.league.name}
         </h1>
-        <p className="mt-4 text-sm leading-6 text-[color:var(--muted,#5B6B7F)]">
-          Ez a meghívólink már létezik. A regisztráció és meghívó elfogadása a
-          következő fejlesztési lépésben kerül bekötésre.
-        </p>
-        <Link
-          className="mt-8 inline-flex rounded-full bg-[color:var(--navy)] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#16375f]"
-          href="/login"
-        >
-          Bejelentkezés
-        </Link>
+        <InviteAcceptanceForm leagueName={invitation.league.name} token={token} />
       </section>
     </main>
   );
