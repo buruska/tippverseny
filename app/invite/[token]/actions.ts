@@ -7,17 +7,11 @@ import { InvitationStatus, LeagueRole, UserRole } from "@prisma/client";
 import { z } from "zod";
 
 import { sendVerificationCodeEmail } from "@/lib/email";
+import { passwordSchema } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const emailSchema = z.string().trim().toLowerCase().email("Érvénytelen email cím.");
 const codeSchema = z.string().trim().regex(/^\d{6}$/, "A kód pontosan 6 számjegy legyen.");
-const passwordSchema = z
-  .string()
-  .min(12, "A jelszó legalább 12 karakter hosszú legyen.")
-  .regex(/[a-z]/, "A jelszó tartalmazzon kisbetűt.")
-  .regex(/[A-Z]/, "A jelszó tartalmazzon nagybetűt.")
-  .regex(/\d/, "A jelszó tartalmazzon számot.")
-  .regex(/[^A-Za-z0-9]/, "A jelszó tartalmazzon speciális karaktert.");
 
 type InviteMode = "login" | "register";
 

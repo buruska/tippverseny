@@ -5,6 +5,10 @@ import type { ReactNode } from "react";
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { PasswordChecklist } from "@/app/components/password-checklist";
+import { PasswordInput } from "@/app/components/password-input";
+import { generateStrongPassword, getPasswordChecks } from "@/lib/password";
+
 import {
   acceptExistingInviteAction,
   checkInviteEmailAction,
@@ -20,49 +24,6 @@ type InviteAcceptanceFormProps = {
   token: string;
 };
 
-const passwordLowercase = "abcdefghijkmnopqrstuvwxyz";
-const passwordUppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-const passwordNumbers = "23456789";
-const passwordSymbols = "!@#$%^&*_-+=?";
-const passwordCharacters = `${passwordLowercase}${passwordUppercase}${passwordNumbers}${passwordSymbols}`;
-
-function getRandomCharacter(characters: string) {
-  const randomValue = new Uint32Array(1);
-  window.crypto.getRandomValues(randomValue);
-
-  return characters[randomValue[0] % characters.length];
-}
-
-function shufflePassword(characters: string[]) {
-  const shuffledCharacters = [...characters];
-
-  for (let index = shuffledCharacters.length - 1; index > 0; index -= 1) {
-    const randomValue = new Uint32Array(1);
-    window.crypto.getRandomValues(randomValue);
-    const swapIndex = randomValue[0] % (index + 1);
-    const currentCharacter = shuffledCharacters[index];
-
-    shuffledCharacters[index] = shuffledCharacters[swapIndex];
-    shuffledCharacters[swapIndex] = currentCharacter;
-  }
-
-  return shuffledCharacters.join("");
-}
-
-function generateStrongPassword() {
-  const requiredCharacters = [
-    getRandomCharacter(passwordLowercase),
-    getRandomCharacter(passwordUppercase),
-    getRandomCharacter(passwordNumbers),
-    getRandomCharacter(passwordSymbols),
-  ];
-  const extraCharacters = Array.from({ length: 12 }, () =>
-    getRandomCharacter(passwordCharacters),
-  );
-
-  return shufflePassword([...requiredCharacters, ...extraCharacters]);
-}
-
 export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<InviteStep>("email");
@@ -73,28 +34,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const passwordChecks = [
-    {
-      label: "Legalább 12 karakter",
-      isValid: password.length >= 12,
-    },
-    {
-      label: "Tartalmaz kisbetűt",
-      isValid: /[a-z]/.test(password),
-    },
-    {
-      label: "Tartalmaz nagybetűt",
-      isValid: /[A-Z]/.test(password),
-    },
-    {
-      label: "Tartalmaz számot",
-      isValid: /\d/.test(password),
-    },
-    {
-      label: "Tartalmaz speciális karaktert",
-      isValid: /[^A-Za-z0-9]/.test(password),
-    },
-  ];
+  const passwordChecks = getPasswordChecks(password);
   const passwordsMatch =
     password.length > 0 &&
     passwordConfirmation.length > 0 &&
@@ -264,10 +204,11 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
             beléptetünk a(z) {leagueName} ligába.
           </InfoBox>
           <ReadonlyEmail email={email} onChangeEmail={() => setStep("email")} />
-          <PasswordField
+          <PasswordInput
             autoComplete="current-password"
             id="invite-login-password"
             label="Jelszó"
+            minLength={1}
             onChange={setPassword}
             value={password}
           />
@@ -289,17 +230,19 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
           >
             Jelszó generálása
           </button>
-          <PasswordField
+          <PasswordInput
             autoComplete="new-password"
             id="invite-password"
             label="Erős jelszó"
+            minLength={12}
             onChange={setPassword}
             value={password}
           />
-          <PasswordField
+          <PasswordInput
             autoComplete="new-password"
             id="invite-password-confirmation"
             label="Jelszó megerősítése"
+            minLength={12}
             onChange={setPasswordConfirmation}
             value={passwordConfirmation}
           />
@@ -386,75 +329,6 @@ function SubmitButton({
   );
 }
 
-function PasswordChecklist({
-  checks,
-  passwordsMatch,
-  showPasswordMatch,
-}: {
-  checks: Array<{
-    isValid: boolean;
-    label: string;
-  }>;
-  passwordsMatch: boolean;
-  showPasswordMatch: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card-muted)] p-4">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[color:var(--muted,#5B6B7F)]">
-        Jelszó követelmények
-      </p>
-      <div className="mt-3 grid gap-2 text-sm">
-        {checks.map((check) => (
-          <PasswordChecklistItem
-            isValid={check.isValid}
-            key={check.label}
-            label={check.label}
-          />
-        ))}
-        <PasswordChecklistItem
-          isValid={passwordsMatch}
-          label="A jelszó és a megerősítés megegyezik"
-          muted={!showPasswordMatch}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PasswordChecklistItem({
-  isValid,
-  label,
-  muted = false,
-}: {
-  isValid: boolean;
-  label: string;
-  muted?: boolean;
-}) {
-  const colorClass = muted
-    ? "text-[color:var(--muted,#5B6B7F)]"
-    : isValid
-      ? "text-emerald-700"
-      : "text-red-700";
-
-  return (
-    <div className={`flex items-center gap-2 font-medium ${colorClass}`}>
-      <span
-        aria-hidden="true"
-        className={`grid h-5 w-5 place-items-center rounded-full text-xs font-bold ${
-          muted
-            ? "bg-white text-[color:var(--muted,#5B6B7F)]"
-            : isValid
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-red-100 text-red-700"
-        }`}
-      >
-        {isValid ? "✓" : "!"}
-      </span>
-      <span>{label}</span>
-    </div>
-  );
-}
-
 function InfoBox({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card-muted)] px-4 py-3 text-sm leading-6 text-[color:var(--foreground)]">
@@ -481,91 +355,5 @@ function ReadonlyEmail({
         Módosítás
       </button>
     </div>
-  );
-}
-
-function PasswordField({
-  autoComplete,
-  id,
-  label,
-  onChange,
-  value,
-}: {
-  autoComplete: string;
-  id: string;
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-
-  return (
-    <div>
-      <label className="text-sm font-semibold text-[color:var(--navy)]" htmlFor={id}>
-        {label}
-      </label>
-      <div className="relative mt-2">
-        <input
-          autoComplete={autoComplete}
-          className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 pr-14 text-base outline-none transition focus:border-[color:var(--green)] focus:ring-4 focus:ring-emerald-100"
-          id={id}
-          minLength={12}
-          onChange={(event) => onChange(event.target.value)}
-          required
-          type={isPasswordVisible ? "text" : "password"}
-          value={value}
-        />
-        <button
-          aria-label={isPasswordVisible ? "Jelszó elrejtése" : "Jelszó megjelenítése"}
-          className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--muted,#5B6B7F)] transition hover:bg-[color:var(--card-muted)] hover:text-[color:var(--navy)]"
-          onClick={() => setIsPasswordVisible((current) => !current)}
-          type="button"
-        >
-          <PasswordVisibilityIcon isPasswordVisible={isPasswordVisible} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PasswordVisibilityIcon({
-  isPasswordVisible,
-}: {
-  isPasswordVisible: boolean;
-}) {
-  if (isPasswordVisible) {
-    return (
-      <svg
-        aria-hidden="true"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-      >
-        <path d="M3 3l18 18" />
-        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
-        <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c6 0 9.5 6 9.5 8a7.6 7.6 0 0 1-2 3" />
-        <path d="M6.5 6.8C4 8.4 2.5 10.8 2.5 12c0 2 3.5 8 9.5 8 1.5 0 2.9-.4 4.1-1" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path d="M2.5 12c0-2 3.5-8 9.5-8s9.5 6 9.5 8-3.5 8-9.5 8-9.5-6-9.5-8Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
   );
 }
