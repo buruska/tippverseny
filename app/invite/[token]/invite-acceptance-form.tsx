@@ -43,6 +43,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
   const canSubmitRegistration =
     username.trim().length >= 3 &&
     passwordChecks.every((check) => check.isValid) && passwordsMatch;
+  const canSubmitVerification = username.trim().length >= 3 && code.length === 6;
 
   function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +65,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
       }
 
       setEmail(result.email);
+      setUsername(result.username ?? "");
       setStep(result.mode);
       setMessage(result.message ?? null);
     });
@@ -138,7 +140,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
     setMessage(null);
 
     startTransition(async () => {
-      const result = await verifyInviteCodeAction(token, email, code);
+      const result = await verifyInviteCodeAction(token, email, username, code);
 
       if (!result.ok || !result.redirectUrl) {
         setError(result.error ?? "Nem sikerült véglegesíteni a regisztrációt.");
@@ -294,10 +296,30 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
       {step === "verify" ? (
         <form className="space-y-5" onSubmit={handleVerifySubmit}>
           <InfoBox>
-            Írd be az emailben kapott 6 számjegyű kódot. Ha lejárt, kérhetsz
-            újat.
+            Add meg a felhasználóneved, majd írd be az emailben kapott 6
+            számjegyű kódot. Ha lejárt, kérhetsz újat.
           </InfoBox>
           <ReadonlyEmail email={email} onChangeEmail={() => setStep("email")} />
+          <div>
+            <label
+              className="text-sm font-semibold text-[color:var(--navy)]"
+              htmlFor="invite-verify-username"
+            >
+              Felhasználónév
+            </label>
+            <input
+              autoComplete="username"
+              className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-base outline-none transition focus:border-[color:var(--green)] focus:ring-4 focus:ring-emerald-100"
+              id="invite-verify-username"
+              maxLength={40}
+              minLength={3}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Add meg a felhasználóneved"
+              required
+              type="text"
+              value={username}
+            />
+          </div>
           <div>
             <label className="text-sm font-semibold text-[color:var(--navy)]" htmlFor="invite-code">
               Megerősítő kód
@@ -316,7 +338,9 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
               value={code}
             />
           </div>
-          <SubmitButton isPending={isPending}>Regisztráció véglegesítése</SubmitButton>
+          <SubmitButton disabled={!canSubmitVerification} isPending={isPending}>
+            Regisztráció véglegesítése
+          </SubmitButton>
           <button
             className="w-full rounded-2xl border border-[color:var(--border)] px-5 py-3 text-sm font-bold text-[color:var(--navy)] transition hover:bg-[color:var(--card-muted)] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isPending}

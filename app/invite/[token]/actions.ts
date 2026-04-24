@@ -100,6 +100,8 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
       error: parsedEmail.error.issues[0]?.message ?? "Érvénytelen email cím.",
       mode: null as InviteMode | null,
       email: null,
+      username: null as string | null,
+      message: null as string | null,
     };
   }
 
@@ -111,6 +113,8 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
       error,
       mode: null,
       email: null,
+      username: null,
+      message: null,
     };
   }
 
@@ -122,6 +126,8 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
       error: "Ez a meghívó másik email címhez tartozik.",
       mode: null,
       email: null,
+      username: null,
+      message: null,
     };
   }
 
@@ -130,6 +136,7 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
     select: {
       id: true,
       emailVerifiedAt: true,
+      name: true,
       passwordHash: true,
     },
   });
@@ -140,6 +147,7 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
       error: null,
       mode: "login" as InviteMode,
       email,
+      username: user.name,
       message: null,
     };
   }
@@ -159,6 +167,7 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
         error: "Nem sikerült új megerősítő kódot küldeni. Próbáld újra később.",
         mode: null,
         email: null,
+        username: null,
         message: null,
       };
     }
@@ -168,6 +177,7 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
       error: null,
       mode: "verify" as InviteMode,
       email,
+      username: user.name,
       message:
         "Ehhez az email címhez már tartozik egy félbemaradt regisztráció. Új megerősítő kódot küldtünk.",
     };
@@ -178,6 +188,7 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
     error: null,
     mode: "register" as InviteMode,
     email,
+    username: null,
     message: null,
   };
 }
@@ -439,15 +450,26 @@ export async function resendInviteCodeAction(token: string, emailValue: string) 
 export async function verifyInviteCodeAction(
   token: string,
   emailValue: string,
+  usernameValue: string,
   codeValue: string,
 ) {
   const parsedEmail = emailSchema.safeParse(emailValue);
+  const parsedUsername = usernameSchema.safeParse(usernameValue);
   const parsedCode = codeSchema.safeParse(codeValue);
 
   if (!parsedEmail.success) {
     return {
       ok: false,
       error: parsedEmail.error.issues[0]?.message ?? "Érvénytelen email cím.",
+      redirectUrl: null,
+    };
+  }
+
+  if (!parsedUsername.success) {
+    return {
+      ok: false,
+      error:
+        parsedUsername.error.issues[0]?.message ?? "Érvénytelen felhasználónév.",
       redirectUrl: null,
     };
   }
@@ -518,7 +540,10 @@ export async function verifyInviteCodeAction(
     }),
     prisma.user.update({
       where: { id: verificationCode.userId },
-      data: { emailVerifiedAt: now },
+      data: {
+        emailVerifiedAt: now,
+        name: parsedUsername.data,
+      },
     }),
     prisma.leagueMembership.upsert({
       where: {
