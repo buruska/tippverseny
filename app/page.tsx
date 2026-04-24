@@ -52,6 +52,12 @@ export default async function HomePage() {
         })
       : Promise.resolve([]),
   ]);
+  const now = new Date();
+  const upcomingOrLiveMatchesCount = matches.filter(
+    (match) =>
+      match.status === "LIVE" ||
+      (match.kickoffAt > now && match.status !== "FINISHED" && match.status !== "CANCELLED"),
+  ).length;
   const predictionsByMatch = new Map<
     string,
     Map<string, { homeScore: number; awayScore: number }>
@@ -105,7 +111,7 @@ export default async function HomePage() {
         <div className="mb-6 flex items-center justify-between gap-4 rounded-[28px] border border-[color:var(--border)] bg-white/88 px-5 py-4 shadow-[0_18px_46px_rgba(11,31,58,0.08)] backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <p className="text-[color:var(--navy)]">
-              <span className="text-xl font-black md:text-2xl">{matches.length}</span>{" "}
+              <span className="text-xl font-black md:text-2xl">{upcomingOrLiveMatchesCount}</span>{" "}
               <span className="text-sm font-medium text-[color:var(--foreground)]/72 md:text-base">
                 meccs van hátra
               </span>
