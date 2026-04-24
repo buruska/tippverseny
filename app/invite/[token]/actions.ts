@@ -13,6 +13,11 @@ import { prisma } from "@/lib/prisma";
 
 const emailSchema = z.string().trim().toLowerCase().email("Érvénytelen email cím.");
 const codeSchema = z.string().trim().regex(/^\d{6}$/, "A kód pontosan 6 számjegy legyen.");
+const usernameSchema = z
+  .string()
+  .trim()
+  .min(3, "A felhasználónév legalább 3 karakter legyen.")
+  .max(40, "A felhasználónév legfeljebb 40 karakter lehet.");
 
 type InviteMode = "login" | "register" | "verify";
 
@@ -250,15 +255,25 @@ export async function acceptExistingInviteAction(
 export async function startInviteRegistrationAction(
   token: string,
   emailValue: string,
+  usernameValue: string,
   passwordValue: string,
   passwordConfirmationValue: string,
 ) {
   const parsedEmail = emailSchema.safeParse(emailValue);
+  const parsedUsername = usernameSchema.safeParse(usernameValue);
 
   if (!parsedEmail.success) {
     return {
       ok: false,
       error: parsedEmail.error.issues[0]?.message ?? "Érvénytelen email cím.",
+    };
+  }
+
+  if (!parsedUsername.success) {
+    return {
+      ok: false,
+      error:
+        parsedUsername.error.issues[0]?.message ?? "Érvénytelen felhasználónév.",
     };
   }
 
@@ -325,9 +340,11 @@ export async function startInviteRegistrationAction(
     where: { email },
     create: {
       email,
+      name: parsedUsername.data,
       passwordHash,
     },
     update: {
+      name: parsedUsername.data,
       passwordHash,
     },
     select: {

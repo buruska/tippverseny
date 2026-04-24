@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BrowserDateTime } from "@/app/components/browser-date-time";
 import { InactivityCountdown } from "@/app/components/inactivity-countdown";
+import { MatchPredictionControls } from "@/app/components/match-prediction-controls";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
 import { getSession } from "@/lib/auth";
 import { getKnockoutPlaceholderLabels } from "@/lib/world-cup-knockout.mjs";
@@ -11,13 +12,62 @@ import { getHungarianTeamName, getTeamFlagUrl } from "@/lib/world-cup-team-names
 
 export default async function HomePage() {
   const session = await getSession();
-  const matches = await prisma.match.findMany({
-    orderBy: [{ kickoffAt: "asc" }, { createdAt: "asc" }],
-    include: {
-      homeTeam: true,
-      awayTeam: true,
-    },
-  });
+  const [matches, memberships, predictions] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: [{ kickoffAt: "asc" }, { createdAt: "asc" }],
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+      },
+    }),
+    session?.user
+      ? prisma.leagueMembership.findMany({
+          where: {
+            userId: session.user.id,
+          },
+          orderBy: {
+            joinedAt: "asc",
+          },
+          select: {
+            leagueId: true,
+            league: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    session?.user
+      ? prisma.prediction.findMany({
+          where: {
+            userId: session.user.id,
+          },
+          select: {
+            leagueId: true,
+            matchId: true,
+            homeScore: true,
+            awayScore: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const predictionsByMatch = new Map<
+    string,
+    Map<string, { homeScore: number; awayScore: number }>
+  >();
+
+  for (const prediction of predictions) {
+    const matchPredictions =
+      predictionsByMatch.get(prediction.matchId) ??
+      new Map<string, { homeScore: number; awayScore: number }>();
+
+    matchPredictions.set(prediction.leagueId, {
+      homeScore: prediction.homeScore,
+      awayScore: prediction.awayScore,
+    });
+    predictionsByMatch.set(prediction.matchId, matchPredictions);
+  }
 
   return (
     <main className="min-h-screen px-6 py-8 md:px-10 md:py-10">
@@ -32,9 +82,14 @@ export default async function HomePage() {
         </div>
 
         {session?.user ? (
-          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
-            <InactivityCountdown />
-            <SignOutButton />
+          <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
+              <InactivityCountdown />
+              <SignOutButton />
+            </div>
+            <p className="text-sm font-semibold text-[color:var(--navy)]">
+              Szia, {session.user.name ?? session.user.email}!
+            </p>
           </div>
         ) : (
           <Link
@@ -81,6 +136,13 @@ export default async function HomePage() {
                 match.awayTeam?.name
                   ? getHungarianTeamName(match.awayTeam.name)
                   : (placeholderLabels?.away ?? "Ismeretlen csapat");
+              const matchPredictions = predictionsByMatch.get(match.id);
+              const leaguePredictionOptions = memberships.map((membership) => ({
+                leagueId: membership.leagueId,
+                leagueName: membership.league.name,
+                prediction: matchPredictions?.get(membership.leagueId) ?? null,
+              }));
+              const isPredictionLocked = match.lockAt <= new Date();
 
               return (
                 <article
@@ -102,30 +164,44 @@ export default async function HomePage() {
                       <span>{awayTeamName}</span>
                     </div>
 
-                    <div className="text-sm font-semibold text-[color:var(--foreground)]/75 lg:text-right">
-                      <BrowserDateTime
-                        iso={match.kickoffAt.toISOString()}
-                        locale="hu-HU"
-                        options={{
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }}
-                        utcFallbackOptions={{
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }}
-                      />
-                      {match.groupName ? (
-                        <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--green)]">
-                          Csoport {match.groupName}
-                        </span>
-                      ) : null}
+                    <div className="flex flex-col items-start gap-2 lg:items-end">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+                        {session?.user ? (
+                          <MatchPredictionControls
+                            awayTeamName={awayTeamName}
+                            homeTeamName={homeTeamName}
+                            isLocked={isPredictionLocked}
+                            leagues={leaguePredictionOptions}
+                            matchId={match.id}
+                          />
+                        ) : null}
+
+                        <div className="text-sm font-semibold text-[color:var(--foreground)]/75 lg:text-right">
+                          <BrowserDateTime
+                            iso={match.kickoffAt.toISOString()}
+                            locale="hu-HU"
+                            options={{
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }}
+                            utcFallbackOptions={{
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }}
+                          />
+                          {match.groupName ? (
+                            <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--green)]">
+                              Csoport {match.groupName}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </article>

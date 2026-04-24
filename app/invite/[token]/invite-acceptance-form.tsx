@@ -28,6 +28,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
   const router = useRouter();
   const [step, setStep] = useState<InviteStep>("email");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [code, setCode] = useState("");
@@ -40,6 +41,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
     passwordConfirmation.length > 0 &&
     password === passwordConfirmation;
   const canSubmitRegistration =
+    username.trim().length >= 3 &&
     passwordChecks.every((check) => check.isValid) && passwordsMatch;
 
   function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
@@ -106,6 +108,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
       const result = await startInviteRegistrationAction(
         token,
         email,
+        username,
         password,
         passwordConfirmation,
       );
@@ -234,6 +237,26 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
             erős jelszót, majd emailben küldünk egy 6 számjegyű kódot.
           </InfoBox>
           <ReadonlyEmail email={email} onChangeEmail={() => setStep("email")} />
+          <div>
+            <label
+              className="text-sm font-semibold text-[color:var(--navy)]"
+              htmlFor="invite-username"
+            >
+              Felhasználónév
+            </label>
+            <input
+              autoComplete="username"
+              className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-base outline-none transition focus:border-[color:var(--green)] focus:ring-4 focus:ring-emerald-100"
+              id="invite-username"
+              maxLength={40}
+              minLength={3}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Add meg a felhasználóneved"
+              required
+              type="text"
+              value={username}
+            />
+          </div>
           <button
             className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-5 py-3 text-sm font-bold text-[color:var(--navy)] transition hover:bg-[color:var(--card-muted)]"
             onClick={handleGeneratePassword}

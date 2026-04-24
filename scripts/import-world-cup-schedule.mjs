@@ -21,6 +21,10 @@ const REQUEST_INTERVAL_MS = Number.parseInt(
 );
 const EXPECTED_MATCHES = 104;
 
+function getPredictionLockAt(kickoffAt) {
+  return new Date(kickoffAt.getTime() - 15 * 60 * 1000);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -233,7 +237,7 @@ async function importEvent(event) {
       status,
       groupName,
       kickoffAt,
-      lockAt: kickoffAt,
+      lockAt: getPredictionLockAt(kickoffAt),
       homeTeamId: homeTeam?.id || null,
       awayTeamId: awayTeam?.id || null,
       homeScore: event.intHomeScore === null ? null : Number(event.intHomeScore),
@@ -247,7 +251,7 @@ async function importEvent(event) {
       status,
       groupName,
       kickoffAt,
-      lockAt: kickoffAt,
+      lockAt: getPredictionLockAt(kickoffAt),
       homeTeamId: homeTeam?.id || null,
       awayTeamId: awayTeam?.id || null,
       homeScore: event.intHomeScore === null ? null : Number(event.intHomeScore),
@@ -264,6 +268,7 @@ function parseEasternKickoffToUtc(kickoffDate, kickoffTimeEt) {
 
 async function importKnockoutPlaceholder(match) {
   const kickoffAt = parseEasternKickoffToUtc(match.kickoffDate, match.kickoffTimeEt);
+  const lockAt = getPredictionLockAt(kickoffAt);
   const stage = MatchStage[match.stage];
   const existingMatchesAtSlot = await prisma.match.findMany({
     where: {
@@ -299,7 +304,7 @@ async function importKnockoutPlaceholder(match) {
       status: MatchStatus.SCHEDULED,
       groupName: null,
       kickoffAt,
-      lockAt: kickoffAt,
+      lockAt,
       homeTeamId: null,
       awayTeamId: null,
       homeScore: null,
@@ -315,7 +320,7 @@ async function importKnockoutPlaceholder(match) {
       status: MatchStatus.SCHEDULED,
       groupName: null,
       kickoffAt,
-      lockAt: kickoffAt,
+      lockAt,
       homeTeamId: null,
       awayTeamId: null,
       homeScore: null,
