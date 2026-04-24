@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 
 import { upsertPredictionAction } from "@/app/predictions/actions";
 
@@ -16,8 +16,9 @@ type LeaguePrediction = {
 type MatchPredictionControlsProps = {
   awayTeamName: string;
   homeTeamName: string;
-  isLocked: boolean;
+  initiallyLocked: boolean;
   leagues: LeaguePrediction[];
+  lockAtIso: string;
   matchId: string;
 };
 
@@ -32,8 +33,9 @@ type DraftScores = Record<
 export function MatchPredictionControls({
   awayTeamName,
   homeTeamName,
-  isLocked,
+  initiallyLocked,
   leagues,
+  lockAtIso,
   matchId,
 }: MatchPredictionControlsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +43,7 @@ export function MatchPredictionControls({
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [leaguePredictions, setLeaguePredictions] = useState(leagues);
+  const [currentTimestamp, setCurrentTimestamp] = useState(() => Date.now());
   const [draftScores, setDraftScores] = useState<DraftScores>(() =>
     Object.fromEntries(
       leagues.map((league) => [
@@ -63,6 +66,20 @@ export function MatchPredictionControls({
         ),
     [leaguePredictions],
   );
+  const lockAtTimestamp = new Date(lockAtIso).getTime();
+  const isLocked = initiallyLocked || currentTimestamp >= lockAtTimestamp;
+
+  useEffect(() => {
+    if (initiallyLocked) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 1_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [initiallyLocked]);
 
   function updateDraft(leagueId: string, side: "homeScore" | "awayScore", value: string) {
     const normalizedValue = value.replace(/\D/g, "").slice(0, 2);
@@ -209,18 +226,24 @@ export function MatchPredictionControls({
                           value={draftScores[league.leagueId]?.awayScore ?? ""}
                         />
                       </div>
-                      <button
-                        className="rounded-full bg-[color:var(--navy)] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#16375f] disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={isPending}
-                        type="submit"
-                      >
-                        {isPending ? "Mentés..." : "Mentés"}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              ))}
+              <button
+                className="rounded-full bg-[color:var(--navy)] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#16375f] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isPending || isLocked}
+                type="submit"
+              >
+                {isLocked ? "Lezárva" : isPending ? "Mentés..." : "Mentés"}
+              </button>
             </div>
+          </div>
+        </form>
+      ))}
+    </div>
+
+            {isLocked ? (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                A tippelés ennél a meccsnél időközben lezárult.
+              </div>
+            ) : null}
 
             {message ? (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">

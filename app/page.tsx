@@ -142,8 +142,6 @@ export default async function HomePage() {
                 leagueName: membership.league.name,
                 prediction: matchPredictions?.get(membership.leagueId) ?? null,
               }));
-              const isPredictionLocked = match.lockAt <= new Date();
-
               return (
                 <article
                   key={match.id}
@@ -170,8 +168,9 @@ export default async function HomePage() {
                           <MatchPredictionControls
                             awayTeamName={awayTeamName}
                             homeTeamName={homeTeamName}
-                            isLocked={isPredictionLocked}
+                            initiallyLocked={match.lockAt <= new Date()}
                             leagues={leaguePredictionOptions}
+                            lockAtIso={match.lockAt.toISOString()}
                             matchId={match.id}
                           />
                         ) : null}
