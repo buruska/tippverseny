@@ -2,7 +2,7 @@
 
 import crypto from "node:crypto";
 
-import { InvitationStatus } from "@prisma/client";
+import { InvitationStatus, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { requireSuperAdmin } from "@/lib/auth";
@@ -18,17 +18,45 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-async function createUniqueLeagueSlug(name: string) {
-  const baseSlug = slugify(name) || "liga";
-  let slug = baseSlug;
-  let suffix = 2;
-
-  while (await prisma.league.findUnique({ where: { slug }, select: { id: true } })) {
-    slug = `${baseSlug}-${suffix}`;
-    suffix += 1;
+function createLeagueSlugCandidate(baseSlug: string, attempt: number) {
+  if (attempt === 0) {
+    return baseSlug;
   }
 
-  return slug;
+  return `${baseSlug}-${attempt + 1}`;
+}
+
+async function createLeagueWithUniqueSlug(name: string, createdById: string) {
+  const baseSlug = slugify(name) || "liga";
+
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const slug = createLeagueSlugCandidate(baseSlug, attempt);
+
+    try {
+      await prisma.league.create({
+        data: {
+          name,
+          slug,
+          createdById,
+        },
+      });
+
+      return;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        Array.isArray(error.meta?.target) &&
+        error.meta.target.includes("slug")
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Nem sikerült egyedi liga-azonosítót létrehozni.");
 }
 
 function createToken() {
@@ -51,15 +79,14 @@ export async function createLeagueAction(formData: FormData) {
     };
   }
 
-  const slug = await createUniqueLeagueSlug(name);
-
-  await prisma.league.create({
-    data: {
-      name,
-      slug,
-      createdById: user.id,
-    },
-  });
+  try {
+    await createLeagueWithUniqueSlug(name, user.id);
+  } catch {
+    return {
+      ok: false,
+      error: "Nem sikerült létrehozni a ligát. Próbáld újra.",
+    };
+  }
 
   revalidatePath("/admin");
 

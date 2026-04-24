@@ -52,7 +52,9 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
 
       if (
         !result.ok ||
-        (result.mode !== "login" && result.mode !== "register") ||
+        (result.mode !== "login" &&
+          result.mode !== "register" &&
+          result.mode !== "verify") ||
         !result.email
       ) {
         setError(result.error ?? "Nem sikerült ellenőrizni az email címet.");
@@ -61,6 +63,7 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
 
       setEmail(result.email);
       setStep(result.mode);
+      setMessage(result.message ?? null);
     });
   }
 
@@ -136,6 +139,14 @@ export function InviteAcceptanceForm({ leagueName, token }: InviteAcceptanceForm
 
       if (!result.ok || !result.redirectUrl) {
         setError(result.error ?? "Nem sikerült véglegesíteni a regisztrációt.");
+        return;
+      }
+
+      if (!password) {
+        const loginUrl = `/login?callbackUrl=${encodeURIComponent(result.redirectUrl)}&verified=success&email=${encodeURIComponent(email)}`;
+
+        router.push(loginUrl);
+        router.refresh();
         return;
       }
 

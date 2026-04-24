@@ -3,17 +3,18 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcryptjs";
-import { InvitationStatus, LeagueRole, UserRole } from "@prisma/client";
+import { LeagueRole } from "@prisma/client";
 import { z } from "zod";
 
 import { sendVerificationCodeEmail } from "@/lib/email";
+import { getPendingInvitation } from "@/lib/invitations";
 import { passwordSchema } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const emailSchema = z.string().trim().toLowerCase().email("Érvénytelen email cím.");
 const codeSchema = z.string().trim().regex(/^\d{6}$/, "A kód pontosan 6 számjegy legyen.");
 
-type InviteMode = "login" | "register";
+type InviteMode = "login" | "register" | "verify";
 
 function createVerificationCode() {
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
@@ -23,47 +24,6 @@ function hashVerificationCode(email: string, code: string) {
   const secret = process.env.AUTH_SECRET ?? "development-secret";
 
   return crypto.createHash("sha256").update(`${email}:${code}:${secret}`).digest("hex");
-}
-
-async function getPendingInvitation(token: string) {
-  const invitation = await prisma.invitation.findUnique({
-    where: { token },
-    select: {
-      id: true,
-      email: true,
-      expiresAt: true,
-      leagueId: true,
-      status: true,
-      league: {
-        select: {
-          name: true,
-          slug: true,
-        },
-      },
-    },
-  });
-
-  if (!invitation) {
-    return {
-      invitation: null,
-      error: "A meghívó nem található.",
-    };
-  }
-
-  if (
-    invitation.status !== InvitationStatus.PENDING ||
-    (invitation.expiresAt && invitation.expiresAt <= new Date())
-  ) {
-    return {
-      invitation: null,
-      error: "Ez a meghívó már nem érvényes.",
-    };
-  }
-
-  return {
-    invitation,
-    error: null,
-  };
 }
 
 async function sendCodeForInvitation(input: {
@@ -164,26 +124,56 @@ export async function checkInviteEmailAction(token: string, emailValue: string) 
     where: { email },
     select: {
       id: true,
+      emailVerifiedAt: true,
       passwordHash: true,
-      role: true,
-      memberships: {
-        take: 1,
-        select: {
-          id: true,
-        },
-      },
     },
   });
 
-  const hasExistingAccount =
-    Boolean(user?.passwordHash) &&
-    (user?.role === UserRole.SUPERADMIN || (user?.memberships.length ?? 0) > 0);
+  if (user?.passwordHash && user.emailVerifiedAt) {
+    return {
+      ok: true,
+      error: null,
+      mode: "login" as InviteMode,
+      email,
+      message: null,
+    };
+  }
+
+  if (user?.passwordHash) {
+    try {
+      await sendCodeForInvitation({
+        email,
+        invitationId: invitation.id,
+        leagueId: invitation.leagueId,
+        leagueName: invitation.league.name,
+        userId: user.id,
+      });
+    } catch {
+      return {
+        ok: false,
+        error: "Nem sikerült új megerősítő kódot küldeni. Próbáld újra később.",
+        mode: null,
+        email: null,
+        message: null,
+      };
+    }
+
+    return {
+      ok: true,
+      error: null,
+      mode: "verify" as InviteMode,
+      email,
+      message:
+        "Ehhez az email címhez már tartozik egy félbemaradt regisztráció. Új megerősítő kódot küldtünk.",
+    };
+  }
 
   return {
     ok: true,
     error: null,
-    mode: hasExistingAccount ? "login" : "register",
+    mode: "register" as InviteMode,
     email,
+    message: null,
   };
 }
 
@@ -310,24 +300,23 @@ export async function startInviteRegistrationAction(
     where: { email },
     select: {
       id: true,
+      emailVerifiedAt: true,
       passwordHash: true,
-      role: true,
-      memberships: {
-        take: 1,
-        select: {
-          id: true,
-        },
-      },
     },
   });
 
-  if (
-    existingUser?.passwordHash &&
-    (existingUser.role === UserRole.SUPERADMIN || existingUser.memberships.length > 0)
-  ) {
+  if (existingUser?.passwordHash && existingUser.emailVerifiedAt) {
     return {
       ok: false,
       error: "Ehhez az email címhez már van fiók. Jelentkezz be a jelszavaddal.",
+    };
+  }
+
+  if (existingUser?.passwordHash) {
+    return {
+      ok: false,
+      error:
+        "Ehhez az email címhez már tartozik egy félbemaradt regisztráció. Kérj új kódot a folytatáshoz.",
     };
   }
 

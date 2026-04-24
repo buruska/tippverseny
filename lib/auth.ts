@@ -34,13 +34,14 @@ export const authOptions: NextAuthOptions = {
           select: {
             id: true,
             email: true,
+            emailVerifiedAt: true,
             name: true,
             role: true,
             passwordHash: true,
           },
         });
 
-        if (!user?.passwordHash) {
+        if (!user?.passwordHash || !user.emailVerifiedAt) {
           return null;
         }
 

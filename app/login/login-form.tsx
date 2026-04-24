@@ -18,19 +18,23 @@ export function LoginForm({ defaultCallbackUrl = "/dashboard" }: LoginFormProps)
   const callbackUrl = searchParams.get("callbackUrl") ?? defaultCallbackUrl;
   const errorFromUrl = searchParams.get("error");
   const resetFromUrl = searchParams.get("reset");
+  const verifiedFromUrl = searchParams.get("verified");
+  const emailFromUrl = searchParams.get("email") ?? "";
   const [error, setError] = useState<string | null>(
     errorFromUrl ? "Sikertelen bejelentkezés. Ellenőrizd az adatokat." : null,
   );
   const [message, setMessage] = useState<string | null>(
-    resetFromUrl === "success"
+    verifiedFromUrl === "success"
+      ? "Az email címedet megerősítettük. Most már be tudsz jelentkezni."
+      : resetFromUrl === "success"
       ? "Az új jelszó elmentve. Most már be tudsz jelentkezni."
       : null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailFromUrl);
   const [password, setPassword] = useState("");
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
+  const [resetEmail, setResetEmail] = useState(emailFromUrl);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [isResetSubmitting, setIsResetSubmitting] = useState(false);

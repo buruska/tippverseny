@@ -23,7 +23,7 @@ export default async function LoginPage() {
           Lépj be az email címeddel és jelszavaddal. A superadmin jogosultság a
           felhasználói szerepkör alapján működik.
         </p>
-        <LoginForm defaultCallbackUrl="/admin" />
+        <LoginForm defaultCallbackUrl="/dashboard" />
       </section>
     </main>
   );
