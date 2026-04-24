@@ -2,7 +2,7 @@
 
 import crypto from "node:crypto";
 
-import { InvitationStatus, Prisma } from "@prisma/client";
+import { InvitationStatus, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { requireSuperAdmin } from "@/lib/auth";
@@ -111,8 +111,39 @@ export async function deleteLeagueAction(leagueId: string) {
     };
   }
 
-  await prisma.league.delete({
-    where: { id: leagueId },
+  await prisma.$transaction(async (tx) => {
+    const affectedUsers = await tx.user.findMany({
+      where: {
+        role: {
+          not: UserRole.SUPERADMIN,
+        },
+        memberships: {
+          some: {
+            leagueId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await tx.league.delete({
+      where: { id: leagueId },
+    });
+
+    if (affectedUsers.length > 0) {
+      await tx.user.deleteMany({
+        where: {
+          id: {
+            in: affectedUsers.map((user) => user.id),
+          },
+          memberships: {
+            none: {},
+          },
+        },
+      });
+    }
   });
 
   revalidatePath("/admin");

@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -15,7 +15,8 @@ type LoginFormProps = {
 export function LoginForm({ defaultCallbackUrl = "/dashboard" }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? defaultCallbackUrl;
+  const callbackUrlFromQuery = searchParams.get("callbackUrl");
+  const callbackUrl = callbackUrlFromQuery ?? defaultCallbackUrl;
   const errorFromUrl = searchParams.get("error");
   const resetFromUrl = searchParams.get("reset");
   const verifiedFromUrl = searchParams.get("verified");
@@ -59,7 +60,19 @@ export function LoginForm({ defaultCallbackUrl = "/dashboard" }: LoginFormProps)
       return;
     }
 
-    router.push(result.url ?? callbackUrl);
+    let destination = result.url ?? callbackUrl;
+
+    if (!callbackUrlFromQuery) {
+      const session = await getSession();
+
+      if (session?.user.role === "SUPERADMIN") {
+        destination = "/admin";
+      } else {
+        destination = defaultCallbackUrl;
+      }
+    }
+
+    router.push(destination);
     router.refresh();
   }
 

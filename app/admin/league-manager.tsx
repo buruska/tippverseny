@@ -254,12 +254,13 @@ export function LeagueManager({ leagues, canManageLeagues }: LeagueManagerProps)
               <h3 className="mt-2 text-2xl font-bold text-[color:var(--navy)]">
                 Biztosan törlöd?
               </h3>
-              <p className="mt-4 text-sm leading-6 text-[color:var(--muted,#5B6B7F)]">
-                A(z) <strong>{leagueToDelete.name}</strong> liga törlésével a
-                hozzá tartozó meghívók, tagságok, tippek és pontok is törlődnek.
-                Ez a művelet nem visszavonható.
-              </p>
-            </div>
+               <p className="mt-4 text-sm leading-6 text-[color:var(--muted,#5B6B7F)]">
+                 A(z) <strong>{leagueToDelete.name}</strong> liga törlésével a
+                 hozzá tartozó meghívók, tagságok, tippek és pontok is törlődnek.
+                 Azok a felhasználók is törlődnek, akiknek ez volt az egyetlen
+                 ligájuk. Ez a művelet nem visszavonható.
+               </p>
+             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
