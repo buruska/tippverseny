@@ -2,11 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { BrowserDateTime } from "@/app/components/browser-date-time";
+import { InactivityCountdown } from "@/app/components/inactivity-countdown";
+import { SignOutButton } from "@/app/dashboard/sign-out-button";
+import { getSession } from "@/lib/auth";
 import { getKnockoutPlaceholderLabels } from "@/lib/world-cup-knockout.mjs";
 import { prisma } from "@/lib/prisma";
 import { getHungarianTeamName, getTeamFlagUrl } from "@/lib/world-cup-team-names";
 
 export default async function HomePage() {
+  const session = await getSession();
   const matches = await prisma.match.findMany({
     orderBy: [{ kickoffAt: "asc" }, { createdAt: "asc" }],
     include: {
@@ -27,12 +31,19 @@ export default async function HomePage() {
           </h1>
         </div>
 
-        <Link
-          className="rounded-2xl bg-[color:var(--navy)] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] !text-white shadow-[0_12px_32px_rgba(11,31,58,0.16)] transition hover:translate-y-[-1px] hover:bg-[#16375f] hover:!text-white"
-          href="/login"
-        >
-          Bejelentkezés
-        </Link>
+        {session?.user ? (
+          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
+            <InactivityCountdown />
+            <SignOutButton />
+          </div>
+        ) : (
+          <Link
+            className="rounded-2xl bg-[color:var(--navy)] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] !text-white shadow-[0_12px_32px_rgba(11,31,58,0.16)] transition hover:translate-y-[-1px] hover:bg-[#16375f] hover:!text-white"
+            href="/login"
+          >
+            Bejelentkezés
+          </Link>
+        )}
       </div>
 
       <section className="mx-auto mt-10 max-w-6xl">
