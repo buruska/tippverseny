@@ -1,17 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { BrowserDateTime } from "@/app/components/browser-date-time";
+import { getKnockoutPlaceholderLabels } from "@/lib/world-cup-knockout.mjs";
 import { prisma } from "@/lib/prisma";
-
-const stageLabels: Record<string, string> = {
-  GROUP: "Csoportkor",
-  ROUND_OF_32: "Legjobb 32",
-  ROUND_OF_16: "Nyolcaddonto",
-  QUARTER_FINAL: "Negyeddonto",
-  SEMI_FINAL: "Elodonto",
-  THIRD_PLACE: "Bronzmeccs",
-  FINAL: "Donto",
-};
+import { getHungarianTeamName, getTeamFlagUrl } from "@/lib/world-cup-team-names";
 
 export default async function HomePage() {
   const matches = await prisma.match.findMany({
@@ -32,10 +25,6 @@ export default async function HomePage() {
           <h1 className="mt-3 text-4xl font-black tracking-tight text-[color:var(--navy)] md:text-6xl">
             VB Tippverseny 2026
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[color:var(--foreground)]/76 md:text-base">
-            Az importalt VB meccsek datum szerint rendezve. A kezdési idő mindig a böngésződ
-            helyi időzónájában jelenik meg.
-          </p>
         </div>
 
         <Link
@@ -48,15 +37,16 @@ export default async function HomePage() {
 
       <section className="mx-auto mt-10 max-w-6xl">
         <div className="mb-6 flex items-center justify-between gap-4 rounded-[28px] border border-[color:var(--border)] bg-white/88 px-5 py-4 shadow-[0_18px_46px_rgba(11,31,58,0.08)] backdrop-blur-sm">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--navy)]/55">
-              Osszes importalt meccs
+          <div className="flex items-center gap-3">
+            <p className="text-[color:var(--navy)]">
+              <span className="text-xl font-black md:text-2xl">{matches.length}</span>{" "}
+              <span className="text-sm font-medium text-[color:var(--foreground)]/72 md:text-base">
+                meccs van hátra
+              </span>
             </p>
-            <p className="mt-1 text-2xl font-black text-[color:var(--navy)]">{matches.length}</p>
           </div>
           <p className="max-w-xl text-right text-sm text-[color:var(--foreground)]/70">
-            A lista az adatbazisban levo meccseket mutatja, a datum-es idomegjelenites pedig
-            kliensoldalon a browser idozonajahoz igazodik.
+            A meccsek kezdete a böngésző időzónájában van megjelenítve.
           </p>
         </div>
 
@@ -69,63 +59,62 @@ export default async function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="overflow-hidden rounded-[28px] border border-[color:var(--border)] bg-white/92 shadow-[0_18px_46px_rgba(11,31,58,0.08)]">
             {matches.map((match) => {
-              const homeTeamName = match.homeTeam?.name ?? "TBD";
-              const awayTeamName = match.awayTeam?.name ?? "TBD";
-              const stageLabel = stageLabels[match.stage] ?? match.stage;
+              const placeholderLabels = getKnockoutPlaceholderLabels(match.externalId);
+              const homeTeamName =
+                match.homeTeam?.name
+                  ? getHungarianTeamName(match.homeTeam.name)
+                  : (placeholderLabels?.home ?? "Ismeretlen csapat");
+              const awayTeamName =
+                match.awayTeam?.name
+                  ? getHungarianTeamName(match.awayTeam.name)
+                  : (placeholderLabels?.away ?? "Ismeretlen csapat");
 
               return (
                 <article
                   key={match.id}
-                  className="rounded-[28px] border border-[color:var(--border)] bg-white/92 p-5 shadow-[0_18px_46px_rgba(11,31,58,0.08)] transition hover:translate-y-[-2px]"
+                  className="border-b border-[color:var(--border)] px-4 py-4 last:border-b-0 md:px-6"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-[color:var(--card-muted)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--navy)]/70">
-                      {stageLabel}
-                    </span>
-                    {match.groupName ? (
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--green)]">
-                        Csoport {match.groupName}
-                      </span>
-                    ) : null}
-                  </div>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[color:var(--navy)] md:text-base">
+                      <TeamFlag
+                        flagUrl={match.homeTeam?.name ? getTeamFlagUrl(match.homeTeam.name) : null}
+                        teamName={homeTeamName}
+                      />
+                      <span>{homeTeamName}</span>
+                      <span className="px-1 text-[color:var(--foreground)]/55">-</span>
+                      <TeamFlag
+                        flagUrl={match.awayTeam?.name ? getTeamFlagUrl(match.awayTeam.name) : null}
+                        teamName={awayTeamName}
+                      />
+                      <span>{awayTeamName}</span>
+                    </div>
 
-                  <div className="mt-6 grid gap-3">
-                    <div className="rounded-2xl bg-[color:var(--card-muted)]/65 px-4 py-3 text-sm font-semibold text-[color:var(--navy)]">
+                    <div className="text-sm font-semibold text-[color:var(--foreground)]/75 lg:text-right">
                       <BrowserDateTime
                         iso={match.kickoffAt.toISOString()}
+                        locale="hu-HU"
                         options={{
-                          weekday: "short",
                           year: "numeric",
-                          month: "short",
+                          month: "long",
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }}
                         utcFallbackOptions={{
-                          weekday: "short",
                           year: "numeric",
-                          month: "short",
+                          month: "long",
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         }}
                       />
-                    </div>
-
-                    <div className="rounded-2xl border border-[color:var(--border)] px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-base font-bold text-[color:var(--navy)]">
-                          {homeTeamName}
+                      {match.groupName ? (
+                        <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--green)]">
+                          Csoport {match.groupName}
                         </span>
-                        <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--foreground)]/55">
-                          vs
-                        </span>
-                        <span className="text-right text-base font-bold text-[color:var(--navy)]">
-                          {awayTeamName}
-                        </span>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
                 </article>
@@ -135,5 +124,31 @@ export default async function HomePage() {
         )}
       </section>
     </main>
+  );
+}
+
+type TeamFlagProps = {
+  flagUrl: string | null | undefined;
+  teamName: string;
+};
+
+function TeamFlag({ flagUrl, teamName }: TeamFlagProps) {
+  if (!flagUrl) {
+    return (
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--card-muted)] text-[10px] font-black text-[color:var(--navy)]">
+        ?
+      </span>
+    );
+  }
+
+  return (
+    <Image
+      alt={`${teamName} zászlója`}
+      className="h-6 w-6 rounded-full border border-[color:var(--border)] bg-white object-contain p-0.5"
+      height={24}
+      loading="lazy"
+      src={flagUrl}
+      width={24}
+    />
   );
 }

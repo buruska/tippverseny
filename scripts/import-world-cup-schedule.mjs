@@ -1,5 +1,9 @@
 import { MatchStage, MatchStatus, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import {
+  WORLD_CUP_KNOCKOUT_PREFIX,
+  knockoutMatches,
+} from "../lib/world-cup-knockout.mjs";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -254,6 +258,76 @@ async function importEvent(event) {
   });
 }
 
+function parseEasternKickoffToUtc(kickoffDate, kickoffTimeEt) {
+  return new Date(`${kickoffDate}T${kickoffTimeEt}:00-04:00`);
+}
+
+async function importKnockoutPlaceholder(match) {
+  const kickoffAt = parseEasternKickoffToUtc(match.kickoffDate, match.kickoffTimeEt);
+  const stage = MatchStage[match.stage];
+  const existingMatchesAtSlot = await prisma.match.findMany({
+    where: {
+      stage,
+      kickoffAt,
+    },
+    select: {
+      externalId: true,
+    },
+  });
+
+  const hasRealMatchAtSlot = existingMatchesAtSlot.some(
+    (existingMatch) =>
+      existingMatch.externalId !== match.externalId &&
+      !existingMatch.externalId?.startsWith(WORLD_CUP_KNOCKOUT_PREFIX),
+  );
+
+  if (hasRealMatchAtSlot) {
+    await prisma.match.deleteMany({
+      where: {
+        externalId: match.externalId,
+      },
+    });
+    return;
+  }
+
+  await prisma.match.upsert({
+    where: {
+      externalId: match.externalId,
+    },
+    update: {
+      stage,
+      status: MatchStatus.SCHEDULED,
+      groupName: null,
+      kickoffAt,
+      lockAt: kickoffAt,
+      homeTeamId: null,
+      awayTeamId: null,
+      homeScore: null,
+      awayScore: null,
+      finalHomeScore: null,
+      finalAwayScore: null,
+      wentToExtraTime: false,
+      wentToPenalties: false,
+    },
+    create: {
+      externalId: match.externalId,
+      stage,
+      status: MatchStatus.SCHEDULED,
+      groupName: null,
+      kickoffAt,
+      lockAt: kickoffAt,
+      homeTeamId: null,
+      awayTeamId: null,
+      homeScore: null,
+      awayScore: null,
+      finalHomeScore: null,
+      finalAwayScore: null,
+      wentToExtraTime: false,
+      wentToPenalties: false,
+    },
+  });
+}
+
 async function main() {
   console.log(`VB menetrend import indul (${SEASON})...`);
 
@@ -270,6 +344,10 @@ async function main() {
 
   for (const event of events) {
     await importEvent(event);
+  }
+
+  for (const knockoutMatch of knockoutMatches) {
+    await importKnockoutPlaceholder(knockoutMatch);
   }
 
   const importedTeamCount = await prisma.team.count();
