@@ -10,6 +10,7 @@ export async function resetPasswordAction(
   token: string,
   passwordValue: string,
   passwordConfirmationValue: string,
+  allowReuse = false,
 ) {
   const parsedPassword = passwordSchema.safeParse(passwordValue);
 
@@ -17,6 +18,8 @@ export async function resetPasswordAction(
     return {
       ok: false,
       error: parsedPassword.error.issues[0]?.message ?? "Nem elég erős a jelszó.",
+      requiresConfirmation: false,
+      email: null,
     };
   }
 
@@ -24,6 +27,8 @@ export async function resetPasswordAction(
     return {
       ok: false,
       error: "A két jelszó nem egyezik.",
+      requiresConfirmation: false,
+      email: null,
     };
   }
 
@@ -36,6 +41,12 @@ export async function resetPasswordAction(
       userId: true,
       expiresAt: true,
       usedAt: true,
+      user: {
+        select: {
+          email: true,
+          passwordHash: true,
+        },
+      },
     },
   });
 
@@ -47,6 +58,21 @@ export async function resetPasswordAction(
     return {
       ok: false,
       error: "Ez a jelszó-visszaállító link már nem érvényes.",
+      requiresConfirmation: false,
+      email: null,
+    };
+  }
+
+  const isCurrentPassword =
+    Boolean(passwordResetToken.user.passwordHash) &&
+    (await bcrypt.compare(parsedPassword.data, passwordResetToken.user.passwordHash!));
+
+  if (isCurrentPassword && !allowReuse) {
+    return {
+      ok: false,
+      error: null,
+      requiresConfirmation: true,
+      email: passwordResetToken.user.email,
     };
   }
 
@@ -87,5 +113,7 @@ export async function resetPasswordAction(
   return {
     ok: true,
     error: null,
+    requiresConfirmation: false,
+    email: passwordResetToken.user.email,
   };
 }
