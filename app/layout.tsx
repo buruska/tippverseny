@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     template: `%s | ${appName}`,
   },
   description: "Baráti körös focivb tippjáték Next.js alapon.",
+  icons: {
+    icon: "/favicon.png?v=4",
+    shortcut: "/favicon.png?v=4",
+    apple: "/favicon.png?v=4",
+  },
 };
 
 export default function RootLayout({
