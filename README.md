@@ -49,6 +49,11 @@ Az induló projekt a következő változókat készíti elő:
 - `AUTH_SECRET`
 - `EMAIL_FROM`
 - `RESEND_API_KEY`
+- `THESPORTSDB_API_KEY`
+- `WORLD_CUP_LEAGUE_ID`
+- `WORLD_CUP_LEAGUE_SLUG`
+- `WORLD_CUP_SEASON`
+- `THESPORTSDB_REQUEST_INTERVAL_MS`
 
 ## Adatbázis és Prisma
 
@@ -75,6 +80,14 @@ npm run db:create-superadmin
 
 A jelszó soha nem kerülhet commitba. A script csak hash-elt jelszót ment az adatbázisba.
 
+VB meccsnaptár import:
+
+```bash
+npm run matches:import
+```
+
+Az import jelenleg a TheSportsDB publikus 2026-os VB forrásából húzza be a már publikált fixture-öket, és a `Team` valamint `Match` rekordokat frissíti.
+
 ## Meghívó és regisztráció
 
 A liga meghívólinkje email címet kér. Meglévő ligatag esetén jelszavas belépéssel lehet csatlakozni, új felhasználónál erős jelszó és 6 számjegyű email-kód szükséges. A kód 1 percig érvényes, és a felületen újraküldhető.
@@ -100,7 +113,4 @@ Fontos oldalak:
 
 ## Következő lépések
 
-- adatbázis és Prisma schema
-- autentikáció
-- liga- és meghívókezelés
-- meccsimport és tipplogika
+- tipplogika

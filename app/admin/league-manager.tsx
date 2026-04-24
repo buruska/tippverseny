@@ -8,6 +8,7 @@ import {
   createLeagueInviteLinkAction,
   deleteLeagueAction,
 } from "@/app/admin/actions";
+import { BrowserDateTime } from "@/app/components/browser-date-time";
 import type { LeagueRole } from "@prisma/client";
 
 type LeagueListItem = {
@@ -409,7 +410,25 @@ export function LeagueManager({ leagues, canManageLeagues }: LeagueManagerProps)
                           {prediction.awayTeamName ?? "Vendég csapat"}
                         </h4>
                         <p className="mt-1 text-sm text-[color:var(--muted,#5B6B7F)]">
-                          Kezdés: {formatDateTime(prediction.kickoffAt)}
+                          Kezdés:{" "}
+                          <BrowserDateTime
+                            iso={new Date(prediction.kickoffAt).toISOString()}
+                            locale="hu-HU"
+                            options={{
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }}
+                            utcFallbackOptions={{
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }}
+                          />
                         </p>
                       </div>
 
@@ -424,7 +443,25 @@ export function LeagueManager({ leagues, canManageLeagues }: LeagueManagerProps)
                     </div>
 
                     <p className="mt-3 text-xs font-medium text-[color:var(--muted,#5B6B7F)]">
-                      Mentve: {formatDateTime(prediction.submittedAt)}
+                      Mentve:{" "}
+                      <BrowserDateTime
+                        iso={new Date(prediction.submittedAt).toISOString()}
+                        locale="hu-HU"
+                        options={{
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }}
+                        utcFallbackOptions={{
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }}
+                      />
                     </p>
                   </div>
                 ))}
@@ -507,14 +544,4 @@ function getMatchStageLabel(stage: string) {
     default:
       return stage;
   }
-}
-
-function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat("hu-HU", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
