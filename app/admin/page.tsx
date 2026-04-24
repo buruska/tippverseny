@@ -11,14 +11,68 @@ export default async function AdminPage() {
     orderBy: {
       createdAt: "desc",
     },
-    select: {
-      id: true,
-      name: true,
-      _count: {
-        select: {
-          memberships: true,
+      select: {
+        id: true,
+        name: true,
+        memberships: {
+          orderBy: {
+            joinedAt: "asc",
+          },
+          select: {
+            id: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
         },
-      },
+        scoreEntries: {
+          select: {
+            userId: true,
+            points: true,
+          },
+        },
+        predictions: {
+          orderBy: {
+            match: {
+              kickoffAt: "asc",
+            },
+          },
+          select: {
+            userId: true,
+            homeScore: true,
+            awayScore: true,
+            submittedAt: true,
+            match: {
+              select: {
+                id: true,
+                kickoffAt: true,
+                stage: true,
+                homeTeam: {
+                  select: {
+                    name: true,
+                    shortName: true,
+                  },
+                },
+                awayTeam: {
+                  select: {
+                    name: true,
+                    shortName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            memberships: true,
+          },
+        },
     },
   });
 
@@ -26,6 +80,37 @@ export default async function AdminPage() {
     id: league.id,
     name: league.name,
     memberCount: league._count.memberships,
+    participants: league.memberships
+      .map((membership) => ({
+        id: membership.user.id,
+        name: membership.user.name,
+        email: membership.user.email,
+        role: membership.role,
+        points: league.scoreEntries
+          .filter((scoreEntry) => scoreEntry.userId === membership.user.id)
+          .reduce((total, scoreEntry) => total + scoreEntry.points, 0),
+        predictions: league.predictions
+          .filter((prediction) => prediction.userId === membership.user.id)
+          .map((prediction) => ({
+            id: prediction.match.id,
+            homeScore: prediction.homeScore,
+            awayScore: prediction.awayScore,
+            submittedAt: prediction.submittedAt,
+            kickoffAt: prediction.match.kickoffAt,
+            stage: prediction.match.stage,
+            homeTeamName:
+              prediction.match.homeTeam?.shortName ?? prediction.match.homeTeam?.name ?? null,
+            awayTeamName:
+              prediction.match.awayTeam?.shortName ?? prediction.match.awayTeam?.name ?? null,
+          })),
+      }))
+      .sort((left, right) => {
+        if (right.points !== left.points) {
+          return right.points - left.points;
+        }
+
+        return (left.name ?? left.email).localeCompare(right.name ?? right.email, "hu");
+      }),
   }));
 
   return (
