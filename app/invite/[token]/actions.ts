@@ -425,6 +425,7 @@ export async function resendInviteCodeAction(token: string, emailValue: string) 
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
+      emailVerifiedAt: true,
       id: true,
     },
   });
@@ -433,6 +434,14 @@ export async function resendInviteCodeAction(token: string, emailValue: string) 
     return {
       ok: false,
       error: "Először add meg a regisztrációs adatokat.",
+    };
+  }
+
+  if (user.emailVerifiedAt) {
+    return {
+      ok: false,
+      error:
+        "Ehhez az email címhez már tartozik egy aktív fiók. Jelentkezz be a jelszavaddal.",
     };
   }
 
@@ -530,6 +539,11 @@ export async function verifyInviteCodeAction(
     select: {
       id: true,
       userId: true,
+      user: {
+        select: {
+          emailVerifiedAt: true,
+        },
+      },
     },
   });
 
@@ -537,6 +551,15 @@ export async function verifyInviteCodeAction(
     return {
       ok: false,
       error: "A kód hibás vagy lejárt. Kérj új kódot.",
+      redirectUrl: null,
+    };
+  }
+
+  if (verificationCode.user.emailVerifiedAt) {
+    return {
+      ok: false,
+      error:
+        "Ehhez az email címhez már tartozik egy aktív fiók. Jelentkezz be a jelszavaddal.",
       redirectUrl: null,
     };
   }
