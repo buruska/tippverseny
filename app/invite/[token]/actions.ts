@@ -231,6 +231,7 @@ export async function acceptExistingInviteAction(
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
+      emailVerifiedAt: true,
       id: true,
       passwordHash: true,
     },
@@ -240,6 +241,15 @@ export async function acceptExistingInviteAction(
     return {
       ok: false,
       error: "Ehhez az email címhez még nincs aktív fiók. Kérj új kódot a regisztrációhoz.",
+      redirectUrl: null,
+    };
+  }
+
+  if (!user.emailVerifiedAt) {
+    return {
+      ok: false,
+      error:
+        "Ehhez az email címhez tartozó regisztráció még nincs megerősítve. Add meg az emailben kapott kódot.",
       redirectUrl: null,
     };
   }
