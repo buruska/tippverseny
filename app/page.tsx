@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrowserDateTime } from "@/app/components/browser-date-time";
 import { InactivityCountdown } from "@/app/components/inactivity-countdown";
 import { MatchPredictionControls } from "@/app/components/match-prediction-controls";
+import { PredictionClockProvider } from "@/app/components/prediction-clock-provider";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
 import { getSession } from "@/lib/auth";
 import { getKnockoutPlaceholderLabels } from "@/lib/world-cup-knockout.mjs";
@@ -131,88 +132,90 @@ export default async function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[28px] border border-[color:var(--border)] bg-white/92 shadow-[0_18px_46px_rgba(11,31,58,0.08)]">
-            {matches.map((match) => {
-              const placeholderLabels = getKnockoutPlaceholderLabels(match.externalId);
-              const homeTeamName =
-                match.homeTeam?.name
-                  ? getHungarianTeamName(match.homeTeam.name)
-                  : (placeholderLabels?.home ?? "Ismeretlen csapat");
-              const awayTeamName =
-                match.awayTeam?.name
-                  ? getHungarianTeamName(match.awayTeam.name)
-                  : (placeholderLabels?.away ?? "Ismeretlen csapat");
-              const matchPredictions = predictionsByMatch.get(match.id);
-              const leaguePredictionOptions = memberships.map((membership) => ({
-                leagueId: membership.leagueId,
-                leagueName: membership.league.name,
-                prediction: matchPredictions?.get(membership.leagueId) ?? null,
-              }));
-              return (
-                <article
-                  key={match.id}
-                  className="border-b border-[color:var(--border)] px-4 py-4 last:border-b-0 md:px-6"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[color:var(--navy)] md:text-base">
-                      <TeamFlag
-                        flagUrl={match.homeTeam?.name ? getTeamFlagUrl(match.homeTeam.name) : null}
-                        teamName={homeTeamName}
-                      />
-                      <span>{homeTeamName}</span>
-                      <span className="px-1 text-[color:var(--foreground)]/55">-</span>
-                      <TeamFlag
-                        flagUrl={match.awayTeam?.name ? getTeamFlagUrl(match.awayTeam.name) : null}
-                        teamName={awayTeamName}
-                      />
-                      <span>{awayTeamName}</span>
-                    </div>
+          <PredictionClockProvider>
+            <div className="overflow-hidden rounded-[28px] border border-[color:var(--border)] bg-white/92 shadow-[0_18px_46px_rgba(11,31,58,0.08)]">
+              {matches.map((match) => {
+                const placeholderLabels = getKnockoutPlaceholderLabels(match.externalId);
+                const homeTeamName =
+                  match.homeTeam?.name
+                    ? getHungarianTeamName(match.homeTeam.name)
+                    : (placeholderLabels?.home ?? "Ismeretlen csapat");
+                const awayTeamName =
+                  match.awayTeam?.name
+                    ? getHungarianTeamName(match.awayTeam.name)
+                    : (placeholderLabels?.away ?? "Ismeretlen csapat");
+                const matchPredictions = predictionsByMatch.get(match.id);
+                const leaguePredictionOptions = memberships.map((membership) => ({
+                  leagueId: membership.leagueId,
+                  leagueName: membership.league.name,
+                  prediction: matchPredictions?.get(membership.leagueId) ?? null,
+                }));
+                return (
+                  <article
+                    key={match.id}
+                    className="border-b border-[color:var(--border)] px-4 py-4 last:border-b-0 md:px-6"
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[color:var(--navy)] md:text-base">
+                        <TeamFlag
+                          flagUrl={match.homeTeam?.name ? getTeamFlagUrl(match.homeTeam.name) : null}
+                          teamName={homeTeamName}
+                        />
+                        <span>{homeTeamName}</span>
+                        <span className="px-1 text-[color:var(--foreground)]/55">-</span>
+                        <TeamFlag
+                          flagUrl={match.awayTeam?.name ? getTeamFlagUrl(match.awayTeam.name) : null}
+                          teamName={awayTeamName}
+                        />
+                        <span>{awayTeamName}</span>
+                      </div>
 
-                    <div className="flex flex-col items-start gap-2 lg:items-end">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
-                        {session?.user ? (
-                          <MatchPredictionControls
-                            awayTeamName={awayTeamName}
-                            homeTeamName={homeTeamName}
-                            initiallyLocked={match.lockAt <= new Date()}
-                            leagues={leaguePredictionOptions}
-                            lockAtIso={match.lockAt.toISOString()}
-                            matchId={match.id}
-                          />
-                        ) : null}
-
-                        <div className="text-sm font-semibold text-[color:var(--foreground)]/75 lg:text-right">
-                          <BrowserDateTime
-                            iso={match.kickoffAt.toISOString()}
-                            locale="hu-HU"
-                            options={{
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }}
-                            utcFallbackOptions={{
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }}
-                          />
-                          {match.groupName ? (
-                            <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--green)]">
-                              Csoport {match.groupName}
-                            </span>
+                      <div className="flex flex-col items-start gap-2 lg:items-end">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+                          {session?.user ? (
+                            <MatchPredictionControls
+                              awayTeamName={awayTeamName}
+                              homeTeamName={homeTeamName}
+                              initiallyLocked={match.lockAt <= new Date()}
+                              leagues={leaguePredictionOptions}
+                              lockAtIso={match.lockAt.toISOString()}
+                              matchId={match.id}
+                            />
                           ) : null}
+
+                          <div className="text-sm font-semibold text-[color:var(--foreground)]/75 lg:text-right">
+                            <BrowserDateTime
+                              iso={match.kickoffAt.toISOString()}
+                              locale="hu-HU"
+                              options={{
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }}
+                              utcFallbackOptions={{
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }}
+                            />
+                            {match.groupName ? (
+                              <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--green)]">
+                                Csoport {match.groupName}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          </PredictionClockProvider>
         )}
       </section>
     </main>

@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useState, useTransition } from "react";
 
 import { upsertPredictionAction } from "@/app/predictions/actions";
+import { usePredictionClock } from "@/app/components/prediction-clock-provider";
 
 type LeaguePrediction = {
   leagueId: string;
@@ -43,7 +44,6 @@ export function MatchPredictionControls({
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [leaguePredictions, setLeaguePredictions] = useState(leagues);
-  const [currentTimestamp, setCurrentTimestamp] = useState(() => Date.now());
   const [draftScores, setDraftScores] = useState<DraftScores>(() =>
     Object.fromEntries(
       leagues.map((league) => [
@@ -66,20 +66,9 @@ export function MatchPredictionControls({
         ),
     [leaguePredictions],
   );
+  const currentTimestamp = usePredictionClock();
   const lockAtTimestamp = new Date(lockAtIso).getTime();
   const isLocked = initiallyLocked || currentTimestamp >= lockAtTimestamp;
-
-  useEffect(() => {
-    if (initiallyLocked) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setCurrentTimestamp(Date.now());
-    }, 1_000);
-
-    return () => window.clearInterval(intervalId);
-  }, [initiallyLocked]);
 
   function updateDraft(leagueId: string, side: "homeScore" | "awayScore", value: string) {
     const normalizedValue = value.replace(/\D/g, "").slice(0, 2);
