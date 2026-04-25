@@ -1,16 +1,18 @@
+import { InactivityCountdown } from "@/app/components/inactivity-countdown";
 import { requireSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { InactivityCountdown } from "@/app/components/inactivity-countdown";
+import { getHungarianTeamName } from "@/lib/world-cup-team-names";
 
-import { LeagueManager } from "./league-manager";
 import { SignOutButton } from "../dashboard/sign-out-button";
+import { LeagueManager } from "./league-manager";
 
 export default async function AdminPage() {
   const user = await requireSuperAdmin();
-  const leagues = await prisma.league.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
+  const [leagues, matches] = await Promise.all([
+    prisma.league.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
       select: {
         id: true,
         name: true,
@@ -73,8 +75,32 @@ export default async function AdminPage() {
             memberships: true,
           },
         },
-    },
-  });
+      },
+    }),
+    prisma.match.findMany({
+      orderBy: [{ kickoffAt: "asc" }, { createdAt: "desc" }],
+      select: {
+        externalId: true,
+        id: true,
+        stage: true,
+        status: true,
+        kickoffAt: true,
+        liveMinute: true,
+        homeScore: true,
+        awayScore: true,
+        homeTeam: {
+          select: {
+            name: true,
+          },
+        },
+        awayTeam: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+  ]);
 
   const leagueItems = leagues.map((league) => ({
     id: league.id,
@@ -113,6 +139,19 @@ export default async function AdminPage() {
       }),
   }));
 
+  const matchItems = matches.map((match) => ({
+    isManual: !match.externalId,
+    id: match.id,
+    stage: match.stage,
+    status: match.status,
+    kickoffAt: match.kickoffAt,
+    liveMinute: match.liveMinute,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    homeTeamName: match.homeTeam?.name ? getHungarianTeamName(match.homeTeam.name) : "Hazai csapat",
+    awayTeamName: match.awayTeam?.name ? getHungarianTeamName(match.awayTeam.name) : "Vendég csapat",
+  }));
+
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
       <section className="mx-auto max-w-4xl rounded-[32px] border border-[color:var(--border)] bg-white p-8 shadow-[0_24px_80px_rgba(11,31,58,0.10)]">
@@ -131,7 +170,7 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <LeagueManager canManageLeagues leagues={leagueItems} />
+        <LeagueManager canManageLeagues leagues={leagueItems} matches={matchItems} />
       </section>
     </main>
   );

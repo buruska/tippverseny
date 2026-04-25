@@ -190,6 +190,7 @@ model Match {
   awayTeamId        String?
   kickoffAt         DateTime
   lockAt            DateTime
+  liveMinute        Int?
   homeScore         Int?
   awayScore         Int?
   finalHomeScore    Int?
